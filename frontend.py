@@ -16,36 +16,70 @@ st.set_page_config(
 st.title("📸 Find Your Wedding Photos")
 st.write("Take a selfie and we'll find every photo you appear in from the gallery.")
 
-# Privacy notice BEFORE the camera activates
-st.info("🔒 Your selfie is processed instantly and is never stored on our servers.")
+# Session state: hold selfie + results across reruns so camera can be hidden
+if "selfie" not in st.session_state:
+    st.session_state.selfie = None
+if "results" not in st.session_state:
+    st.session_state.results = None
 
-img_file = st.camera_input("Smile for the camera!")
+# Show camera only until a selfie is captured
+if st.session_state.selfie is None:
+    st.info("🔒 Your selfie is processed instantly and is never stored on our servers.")
+    img_file = st.camera_input("Smile for the camera!")
+    if img_file:
+        st.session_state.selfie = img_file
+        st.rerun()
+    st.stop()
 
-if img_file:
+# --- Selfie captured — camera is now hidden ---
+img_file = st.session_state.selfie
+
+# Run search once, cache result in session state
+if st.session_state.results is None:
     with st.spinner("Scanning the gallery — this usually takes 10–20 seconds…"):
         files = {"file": ("selfie.jpg", img_file.getvalue(), "image/jpeg")}
         try:
             r = requests.post(f"{BACKEND_URL}/find-me", files=files, timeout=60)
         except requests.exceptions.ConnectionError:
             st.error("Could not reach the server. Please try again in a moment.")
+            if st.button("📷 Try Again"):
+                st.session_state.selfie = None
+                st.session_state.results = None
+                st.rerun()
             st.stop()
         except requests.exceptions.Timeout:
             st.error("The scan timed out. Please try again.")
+            if st.button("📷 Try Again"):
+                st.session_state.selfie = None
+                st.session_state.results = None
+                st.rerun()
             st.stop()
 
-    if r.status_code != 200:
-        st.error("Something went wrong on our end. Please try again in a moment.")
-        st.stop()
+        if r.status_code != 200:
+            st.error("Something went wrong on our end. Please try again in a moment.")
+            if st.button("📷 Try Again"):
+                st.session_state.selfie = None
+                st.session_state.results = None
+                st.rerun()
+            st.stop()
 
-    data = r.json()
-    drive_ids = data.get("drive_ids", [])
+        st.session_state.results = r.json()
 
-    if not drive_ids:
-        st.warning("No matches found. Try again with better lighting or a clearer angle.")
-        if st.button("📷 Try Again"):
-            st.rerun()
-    else:
-        st.success(f"🎉 Found {len(drive_ids)} photos of you!")
+data = st.session_state.results
+drive_ids = data.get("drive_ids", [])
+
+if not drive_ids:
+    st.warning("No matches found. Try again with better lighting or a clearer angle.")
+    if st.button("📷 Try Again"):
+        st.session_state.selfie = None
+        st.session_state.results = None
+        st.rerun()
+else:
+    st.success(f"🎉 Found {len(drive_ids)} photos of you!")
+    if st.button("📷 Try Again"):
+        st.session_state.selfie = None
+        st.session_state.results = None
+        st.rerun()
 
         # Build cards
         cards_html = ""
