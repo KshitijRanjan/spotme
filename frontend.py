@@ -81,14 +81,14 @@ else:
         st.session_state.results = None
         st.rerun()
 
-        # Build cards
-        cards_html = ""
-        download_urls = []
-        for did in drive_ids:
-            thumb = f"https://drive.google.com/thumbnail?id={did}&sz=w400"
-            download = f"https://drive.google.com/uc?export=download&id={did}"
-            download_urls.append(download)
-            cards_html += f"""
+    # Build cards
+    cards_html = ""
+    download_urls = []
+    for did in drive_ids:
+        thumb = f"https://drive.google.com/thumbnail?id={did}&sz=w400"
+        download = f"https://drive.google.com/uc?export=download&id={did}"
+        download_urls.append(download)
+        cards_html += f"""
             <div class="photo-card">
                 <a href="{download}" target="_blank">
                     <img src="{thumb}" loading="lazy" alt="Your photo">
