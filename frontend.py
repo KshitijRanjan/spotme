@@ -12,43 +12,6 @@ st.set_page_config(
     layout="wide",
 )
 
-st.markdown("""
-<style>
-/* Responsive photo grid */
-.photo-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 14px;
-    margin-top: 20px;
-}
-.photo-card {
-    border-radius: 10px;
-    overflow: hidden;
-    background: #111827;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-    transition: transform 0.15s;
-}
-.photo-card:hover { transform: scale(1.02); }
-.photo-card img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    display: block;
-}
-.photo-card a.dl-btn {
-    display: block;
-    text-align: center;
-    padding: 9px;
-    background: #1d4ed8;
-    color: white;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
-.photo-card a.dl-btn:hover { background: #1e40af; }
-</style>
-""", unsafe_allow_html=True)
 
 st.title("📸 Find Your Wedding Photos")
 st.write("Take a selfie and we'll find every photo you appear in from the gallery.")
@@ -84,53 +47,13 @@ if img_file:
     else:
         st.success(f"🎉 Found {len(drive_ids)} photos of you!")
 
-        # --- Download All (JavaScript, staggered to avoid popup blockers) ---
-        download_urls = [
-            f"https://drive.google.com/uc?export=download&id={did}"
-            for did in drive_ids
-        ]
-        urls_json = json.dumps(download_urls)
-        components.html(f"""
-            <style>
-              #dl-all {{
-                background: #1d4ed8; color: white; border: none;
-                padding: 11px 22px; border-radius: 7px; font-size: 14px;
-                font-weight: 600; cursor: pointer; font-family: sans-serif;
-              }}
-              #dl-all:hover {{ background: #1e40af; }}
-              #dl-note {{ color: #6b7280; font-size: 12px; margin-top: 6px; font-family: sans-serif; }}
-            </style>
-            <button id="dl-all" onclick="downloadAll()">
-              ⬇ Download All ({len(drive_ids)} photos)
-            </button>
-            <p id="dl-note">
-              If your browser asks to allow multiple downloads, click Allow.
-            </p>
-            <script>
-            function downloadAll() {{
-              var urls = {urls_json};
-              urls.forEach(function(url, i) {{
-                setTimeout(function() {{
-                  var a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'photo_' + (i + 1) + '.jpg';
-                  a.target = '_blank';
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                }}, i * 400);
-              }});
-            }}
-            </script>
-        """, height=80)
-
-        # --- Thumbnail grid — all photos, lazy-loaded ---
-        # Thumbnails: Google Drive thumbnail API (requires folder to be publicly viewable)
-        # Download: direct file download URL
+        # Build cards
         cards_html = ""
+        download_urls = []
         for did in drive_ids:
             thumb = f"https://drive.google.com/thumbnail?id={did}&sz=w400"
             download = f"https://drive.google.com/uc?export=download&id={did}"
+            download_urls.append(download)
             cards_html += f"""
             <div class="photo-card">
                 <a href="{download}" target="_blank">
@@ -140,7 +63,73 @@ if img_file:
             </div>
             """
 
-        st.markdown(
-            f'<div class="photo-grid">{cards_html}</div>',
-            unsafe_allow_html=True,
-        )
+        urls_json = json.dumps(download_urls)
+
+        # Estimate iframe height: ~254px per row, 4 cols assumed, plus header
+        rows = max(1, (len(drive_ids) + 3) // 4)
+        iframe_height = min(rows * 260 + 120, 3000)
+
+        # Render Download All + grid in ONE iframe so HTML/JS executes correctly
+        components.html(f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+              body {{ margin: 0; padding: 0; font-family: sans-serif; background: transparent; }}
+              #dl-wrap {{ margin-bottom: 16px; }}
+              #dl-all {{
+                background: #1d4ed8; color: white; border: none;
+                padding: 11px 22px; border-radius: 7px; font-size: 14px;
+                font-weight: 600; cursor: pointer;
+              }}
+              #dl-all:hover {{ background: #1e40af; }}
+              #dl-note {{ color: #6b7280; font-size: 12px; margin-top: 6px; }}
+              .photo-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 14px;
+              }}
+              .photo-card {{
+                border-radius: 10px; overflow: hidden;
+                background: #111827;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+              }}
+              .photo-card img {{
+                width: 100%; height: 200px;
+                object-fit: cover; display: block;
+              }}
+              .dl-btn {{
+                display: block; text-align: center; padding: 9px;
+                background: #1d4ed8; color: white;
+                text-decoration: none; font-size: 13px; font-weight: 600;
+              }}
+              .dl-btn:hover {{ background: #1e40af; }}
+            </style>
+            </head>
+            <body>
+              <div id="dl-wrap">
+                <button id="dl-all" onclick="downloadAll()">
+                  ⬇ Download All ({len(drive_ids)} photos)
+                </button>
+                <p id="dl-note">If your browser asks to allow multiple downloads, click Allow.</p>
+              </div>
+              <div class="photo-grid">
+                {cards_html}
+              </div>
+              <script>
+              function downloadAll() {{
+                var urls = {urls_json};
+                urls.forEach(function(url, i) {{
+                  setTimeout(function() {{
+                    var a = document.createElement('a');
+                    a.href = url; a.download = 'photo_' + (i+1) + '.jpg';
+                    a.target = '_blank';
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a);
+                  }}, i * 400);
+                }});
+              }}
+              </script>
+            </body>
+            </html>
+        """, height=iframe_height, scrolling=True)
