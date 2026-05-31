@@ -1,0 +1,25 @@
+# API server
+fastapi
+uvicorn[standard]
+python-multipart
+slowapi
+
+# Database
+psycopg2-binary
+
+# Frontend
+streamlit
+requests
+
+# AWS face recognition
+boto3
+
+# Google Drive API
+google-api-python-client
+google-auth
+
+# Image processing
+Pillow
+
+# Environment variable loading
+python-dotenv

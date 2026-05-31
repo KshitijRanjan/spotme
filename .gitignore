@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Environment & credentials — NEVER commit these
+.env
+*.env
+service_account.json
+*_service_account.json
+credentials.json
+
+# Generated database — large binary, rebuilt by scripts/index_photos.py
+metadata.db
+*.db
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+.claude/
+nohup.out
