@@ -92,7 +92,9 @@ else:
             st.rerun()
 
     with col2:
-        if st.button(f"⬇ Download All ({total} photos)"):
+        slot = st.empty()
+        if slot.button(f"⬇ Download All ({total} photos)", key="dl_all_btn"):
+            slot.empty()
             progress_bar = st.progress(0, text="Starting…")
             buf = io.BytesIO()
             failed = 0
@@ -111,12 +113,12 @@ else:
                     progress_bar.progress(pct, text=f"Zipping {i+1} / {total} photos…")
             buf.seek(0)
             progress_bar.empty()
-            label = f"📦 Save ZIP ({total - failed} photos)"
-            st.download_button(
-                label=label,
+            slot.download_button(
+                label=f"📦 Save ZIP ({total - failed} photos)",
                 data=buf,
                 file_name="my_photos.zip",
                 mime="application/zip",
+                key="save_zip_btn",
             )
 
     # Pagination controls
