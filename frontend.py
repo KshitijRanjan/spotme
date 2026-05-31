@@ -93,20 +93,27 @@ else:
 
     with col2:
         if st.button(f"⬇ Download All ({total} photos)"):
-            with st.spinner("Zipping your photos…"):
-                buf = io.BytesIO()
-                with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-                    for i, did in enumerate(drive_ids):
-                        url = f"https://drive.google.com/uc?export=download&id={did}"
-                        try:
-                            resp = requests.get(url, timeout=30)
-                            if resp.status_code == 200:
-                                zf.writestr(f"photo_{i+1:03d}.jpg", resp.content)
-                        except Exception:
-                            pass
-                buf.seek(0)
+            progress_bar = st.progress(0, text="Starting…")
+            buf = io.BytesIO()
+            failed = 0
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                for i, did in enumerate(drive_ids):
+                    url = f"https://drive.google.com/uc?export=download&id={did}"
+                    try:
+                        resp = requests.get(url, timeout=30)
+                        if resp.status_code == 200:
+                            zf.writestr(f"photo_{i+1:03d}.jpg", resp.content)
+                        else:
+                            failed += 1
+                    except Exception:
+                        failed += 1
+                    pct = (i + 1) / total
+                    progress_bar.progress(pct, text=f"Zipping {i+1} / {total} photos…")
+            buf.seek(0)
+            progress_bar.empty()
+            label = f"📦 Save ZIP ({total - failed} photos)"
             st.download_button(
-                label="📦 Save ZIP",
+                label=label,
                 data=buf,
                 file_name="my_photos.zip",
                 mime="application/zip",
