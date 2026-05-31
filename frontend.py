@@ -20,6 +20,10 @@ if "selfie" not in st.session_state:
     st.session_state.selfie = None
 if "results" not in st.session_state:
     st.session_state.results = None
+if "zip_data" not in st.session_state:
+    st.session_state.zip_data = None
+if "zip_count" not in st.session_state:
+    st.session_state.zip_count = 0
 
 # Show camera only until a selfie is captured
 if st.session_state.selfie is None:
@@ -89,15 +93,23 @@ else:
             st.session_state.selfie = None
             st.session_state.results = None
             st.session_state.page = 0
+            st.session_state.zip_data = None
+            st.session_state.zip_count = 0
             st.rerun()
 
     with col2:
-        slot = st.empty()
-        if slot.button(f"⬇ Download All ({total} photos)", key="dl_all_btn"):
-            slot.empty()
+        if st.session_state.zip_data is not None:
+            st.download_button(
+                label=f"📦 Save ZIP ({st.session_state.zip_count} photos)",
+                data=st.session_state.zip_data,
+                file_name="my_photos.zip",
+                mime="application/zip",
+                key="save_zip_btn",
+            )
+        elif st.button(f"⬇ Download All ({total} photos)", key="dl_all_btn"):
             progress_bar = st.progress(0, text="Starting…")
             buf = io.BytesIO()
-            failed = 0
+            saved = 0
             with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
                 for i, did in enumerate(drive_ids):
                     url = f"https://drive.google.com/uc?export=download&id={did}"
@@ -105,21 +117,15 @@ else:
                         resp = requests.get(url, timeout=30)
                         if resp.status_code == 200:
                             zf.writestr(f"photo_{i+1:03d}.jpg", resp.content)
-                        else:
-                            failed += 1
+                            saved += 1
                     except Exception:
-                        failed += 1
-                    pct = (i + 1) / total
-                    progress_bar.progress(pct, text=f"Zipping {i+1} / {total} photos…")
+                        pass
+                    progress_bar.progress((i + 1) / total, text=f"Zipping {i+1} / {total} photos…")
             buf.seek(0)
+            st.session_state.zip_data = buf.getvalue()
+            st.session_state.zip_count = saved
             progress_bar.empty()
-            slot.download_button(
-                label=f"📦 Save ZIP ({total - failed} photos)",
-                data=buf,
-                file_name="my_photos.zip",
-                mime="application/zip",
-                key="save_zip_btn",
-            )
+            st.rerun()
 
     # Pagination controls
     page = st.session_state.page
