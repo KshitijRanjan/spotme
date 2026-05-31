@@ -41,7 +41,11 @@ rek = boto3.client(
 
 # Connection pool: min 1, max 10 connections.
 # Supabase free tier allows ~60 concurrent connections; 10 leaves headroom.
-pool = psycopg2.pool.ThreadedConnectionPool(1, 10, os.getenv('DATABASE_URL'))
+_db_url = os.getenv('DATABASE_URL', '')
+# Supabase requires SSL; append sslmode if not already present
+if _db_url and 'sslmode' not in _db_url:
+    _db_url += '?sslmode=require'
+pool = psycopg2.pool.ThreadedConnectionPool(1, 10, _db_url)
 
 
 def _query_drive_ids(face_ids: list) -> list:
