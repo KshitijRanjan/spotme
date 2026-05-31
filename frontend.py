@@ -1,7 +1,7 @@
+import io
 import os
-import json
+import zipfile
 import streamlit as st
-import streamlit.components.v1 as components
 import requests
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
@@ -91,35 +91,26 @@ else:
             st.session_state.page = 0
             st.rerun()
 
-    # Download All button (needs JS — small iframe, no images inside)
-    download_urls = [f"https://drive.google.com/uc?export=download&id={did}" for did in drive_ids]
-    urls_json = json.dumps(download_urls)
-    components.html(f"""
-        <!DOCTYPE html><html><head>
-        <style>
-          body {{ margin:0; padding:4px 0; font-family:sans-serif; background:transparent; }}
-          #dl-all {{ background:#1d4ed8; color:white; border:none;
-            padding:10px 20px; border-radius:7px; font-size:14px;
-            font-weight:600; cursor:pointer; }}
-          #dl-all:hover {{ background:#1e40af; }}
-          #dl-note {{ color:#6b7280; font-size:12px; margin-top:5px; }}
-        </style></head><body>
-        <button id="dl-all" onclick="downloadAll()">⬇ Download All ({total} photos)</button>
-        <p id="dl-note">Allow multiple downloads if browser asks.</p>
-        <script>
-        function downloadAll() {{
-          var urls = {urls_json};
-          urls.forEach(function(url, i) {{
-            setTimeout(function() {{
-              var a = document.createElement('a');
-              a.href = url; a.download = 'photo_'+(i+1)+'.jpg';
-              a.target = '_blank';
-              document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            }}, i * 400);
-          }});
-        }}
-        </script></body></html>
-    """, height=80)
+    with col2:
+        if st.button(f"⬇ Download All ({total} photos)"):
+            with st.spinner("Zipping your photos…"):
+                buf = io.BytesIO()
+                with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for i, did in enumerate(drive_ids):
+                        url = f"https://drive.google.com/uc?export=download&id={did}"
+                        try:
+                            resp = requests.get(url, timeout=30)
+                            if resp.status_code == 200:
+                                zf.writestr(f"photo_{i+1:03d}.jpg", resp.content)
+                        except Exception:
+                            pass
+                buf.seek(0)
+            st.download_button(
+                label="📦 Save ZIP",
+                data=buf,
+                file_name="my_photos.zip",
+                mime="application/zip",
+            )
 
     # Pagination controls
     page = st.session_state.page
