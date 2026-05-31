@@ -13,8 +13,7 @@ st.set_page_config(
 )
 
 
-st.title("📸 Find Your Wedding Photos")
-st.write("Take a selfie and we'll find every photo you appear in from the gallery.")
+st.title("📸 Find Your Photos")
 
 # Session state: hold selfie + results across reruns so camera can be hidden
 if "selfie" not in st.session_state:
@@ -166,13 +165,13 @@ else:
 
     st.markdown(f'<div class="photo-grid">{cards_html}</div>', unsafe_allow_html=True)
 
-    # Prev / Next
-    c1, c2, c3 = st.columns([1, 2, 1])
+    # Prev / Next — wide middle pushes buttons to edges
+    c1, _, c3 = st.columns([1, 12, 1])
     with c1:
-        if st.button("← Prev", disabled=(page == 0)):
+        if st.button("← Prev", disabled=(page == 0), use_container_width=True):
             st.session_state.page -= 1
             st.rerun()
     with c3:
-        if st.button("Next →", disabled=(page >= total_pages - 1)):
+        if st.button("Next →", disabled=(page >= total_pages - 1), use_container_width=True):
             st.session_state.page += 1
             st.rerun()
