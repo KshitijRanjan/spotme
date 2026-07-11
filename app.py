@@ -71,6 +71,13 @@ def _query_drive_ids(face_ids: list) -> list:
 
 @app.get("/health")
 def health():
+    # Touches the DB (not just the process) so scheduled pings also
+    # count as Supabase activity and prevent free-tier auto-pause.
+    conn = pool.getconn()
+    try:
+        conn.cursor().execute("SELECT 1")
+    finally:
+        pool.putconn(conn)
     return {"status": "ok"}
 
 

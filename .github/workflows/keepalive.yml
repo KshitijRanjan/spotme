@@ -1,0 +1,14 @@
+name: Keep backend + Supabase alive
+
+on:
+  schedule:
+    # every 3 days — well under Supabase's ~7-day free-tier pause threshold
+    - cron: "0 6 */3 * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend /health (hits Supabase via SELECT 1)
+        run: curl -sf --retry 3 --retry-delay 10 --max-time 60 https://spotme-bpa3.onrender.com/health
